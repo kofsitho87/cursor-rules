@@ -1,6 +1,6 @@
 ---
 description: React best practices and patterns for modern web applications
-globs: **/*.tsx, **/*.jsx, components/**/*
+globs: *.tsx,**/*.ts
 alwaysApply: false
 ---
 
@@ -42,6 +42,9 @@ alwaysApply: false
 
 ### 플로우 관리
 - @use-funnel/browser (스텝 기반 상태 관리)
+
+### React 유틸리티
+- react-simplikit (React 전용 경량 유틸리티 라이브러리)
 
 ## 코딩 스타일 및 규칙
 
@@ -308,6 +311,237 @@ export default function DataTable({ data }: { data: any[] }) {
   )
 }
 ```
+
+### 9. React 유틸리티 (react-simplikit)
+`react-simplikit`은 React의 설계 원칙을 존중하면서 개발 경험을 개선하는 경량 라이브러리입니다. SSR 환경에서 안전하고, 제로 의존성으로 번들 사이즈를 최적화합니다.
+
+#### 주요 특징
+- **SSR 안전성**: hydration 불일치 오류 방지
+- **제로 의존성**: React 외 다른 라이브러리에 의존하지 않음
+- **작은 번들 사이즈**: react-use 대비 최대 89% 작은 크기
+- **선언적 인터페이스**: React의 선언적 API와 유사한 개발 경험
+
+#### 컴포넌트 활용
+
+**Separated - 배열 요소 사이 구분자 삽입**
+```typescript
+import { Separated } from 'react-simplikit'
+
+// ❌ 기존 방식
+const texts = ['hello', 'react', 'world']
+function Page() {
+  return (
+    <>
+      {texts.map((text, idx) => (
+        <Fragment key={text}>
+          <div>{text}</div>
+          {idx < texts.length - 1 ? <Border type="padding24" /> : null}
+        </Fragment>
+      ))}
+    </>
+  )
+}
+
+// ✅ react-simplikit 사용
+function Page() {
+  return (
+    <Separated by={<Border type="padding24" />}>
+      {texts.map(text => (
+        <div key={text}>{text}</div>
+      ))}
+    </Separated>
+  )
+}
+```
+
+**SwitchCase - 조건부 렌더링**
+```typescript
+import { SwitchCase } from 'react-simplikit'
+
+function StatusDisplay({ status }: { status: 'loading' | 'success' | 'error' }) {
+  return (
+    <SwitchCase
+      value={status}
+      caseBy={{
+        loading: <Spinner />,
+        success: <SuccessMessage />,
+        error: <ErrorMessage />,
+      }}
+    />
+  )
+}
+```
+
+**ImpressionArea - 요소 노출 추적**
+```typescript
+import { ImpressionArea } from 'react-simplikit'
+
+function TrackableContent() {
+  return (
+    <ImpressionArea
+      onImpressionStart={() => console.log('요소가 보여요')}
+      onImpressionEnd={() => console.log('요소가 사라졌어요')}
+      timeThreshold={1000} // 1초 이상 노출
+      areaThreshold={0.5}  // 50% 이상 보일 때
+    >
+      <div>추적할 콘텐츠</div>
+    </ImpressionArea>
+  )
+}
+```
+
+#### 훅 활용
+
+**useToggle - 토글 상태 관리**
+```typescript
+import { useToggle } from 'react-simplikit'
+
+function Modal() {
+  // ❌ 기존 방식
+  const [isOpen, setOpen] = useState(false)
+  const toggle = useCallback(() => setOpen(prev => !prev), [])
+
+  // ✅ react-simplikit 사용
+  const [isOpen, toggle] = useToggle(false)
+
+  return (
+    <div>
+      <button onClick={toggle}>모달 토글</button>
+      {isOpen && <ModalContent />}
+    </div>
+  )
+}
+```
+
+**useDebounce - 디바운스 처리**
+```typescript
+import { useDebounce } from 'react-simplikit'
+
+function SearchInput() {
+  const [query, setQuery] = useState('')
+  
+  const debouncedSearch = useDebounce(
+    (searchTerm: string) => {
+      // API 호출 로직
+      searchAPI(searchTerm)
+    },
+    500 // 500ms 디바운스
+  )
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setQuery(value)
+    debouncedSearch(value)
+  }
+
+  return <input value={query} onChange={handleInputChange} />
+}
+```
+
+**useOutsideClickEffect - 외부 클릭 감지**
+```typescript
+import { useOutsideClickEffect } from 'react-simplikit'
+
+function Dropdown() {
+  const [isOpen, setIsOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useOutsideClickEffect(dropdownRef, () => {
+    setIsOpen(false)
+  })
+
+  return (
+    <div ref={dropdownRef}>
+      <button onClick={() => setIsOpen(!isOpen)}>드롭다운</button>
+      {isOpen && <DropdownMenu />}
+    </div>
+  )
+}
+```
+
+**useIntersectionObserver - 교차 관찰**
+```typescript
+import { useIntersectionObserver } from 'react-simplikit'
+
+function LazyImage({ src, alt }: { src: string; alt: string }) {
+  const [isLoaded, setIsLoaded] = useState(false)
+  
+  const ref = useIntersectionObserver<HTMLDivElement>(
+    (entry) => {
+      if (entry.isIntersecting && !isLoaded) {
+        setIsLoaded(true)
+      }
+    },
+    { threshold: 0.1 }
+  )
+
+  return (
+    <div ref={ref}>
+      {isLoaded ? (
+        <img src={src} alt={alt} />
+      ) : (
+        <div className="placeholder">로딩 중...</div>
+      )}
+    </div>
+  )
+}
+```
+
+**useAsyncEffect - 비동기 이펙트**
+```typescript
+import { useAsyncEffect } from 'react-simplikit'
+
+function UserProfile({ userId }: { userId: string }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useAsyncEffect(async () => {
+    setLoading(true)
+    try {
+      const userData = await fetchUser(userId)
+      setUser(userData)
+    } catch (error) {
+      console.error('사용자 정보 로드 실패:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [userId])
+
+  if (loading) return <Spinner />
+  return <div>{user?.name}</div>
+}
+```
+
+**useStorageState - 스토리지 연동 상태**
+```typescript
+import { useStorageState } from 'react-simplikit'
+
+function ThemeToggle() {
+  const [theme, setTheme] = useStorageState('theme', 'light', {
+    storage: 'localStorage'
+  })
+
+  return (
+    <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
+      현재 테마: {theme}
+    </button>
+  )
+}
+```
+
+#### 사용 가이드라인
+
+**언제 사용할까?**
+- 복잡한 상태 로직을 선언적으로 단순화하고 싶을 때
+- SSR 환경에서 안전한 클라이언트 사이드 로직이 필요할 때
+- 번들 사이즈 최적화가 중요한 프로젝트에서
+- React의 설계 원칙에 맞는 직관적인 API를 원할 때
+
+**기존 라이브러리와의 관계**
+- React Query: 서버 상태 관리 (보완적 관계)
+- nuqs: URL 쿼리 파라미터 상태 (보완적 관계)
+- React Hook Form: 폼 상태 관리 (보완적 관계)
+- react-simplikit: 일반적인 React 유틸리티 (추가적 도구)
 
 ## Readability (가독성)
 코드의 명확성과 이해도를 향상시키기 위한 규칙들
