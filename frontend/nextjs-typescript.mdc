@@ -358,15 +358,18 @@ function Page() {
 ```typescript
 import { SwitchCase } from 'react-simplikit'
 
-function StatusDisplay({ status }: { status: 'loading' | 'success' | 'error' }) {
+function App() {
   return (
     <SwitchCase
       value={status}
+      // status 값에 따라 TypeA, TypeB, 또는 TypeC를 렌더링해요.
       caseBy={{
-        loading: <Spinner />,
-        success: <SuccessMessage />,
-        error: <ErrorMessage />,
+        a: () => <TypeA />,
+        b: () => <TypeB />,
+        c: () => <TypeC />,
       }}
+      // status 값이 어떤 케이스와도 일치하지 않을 때 Default를 렌더링해요.
+      defaultComponent={() => <Default />}
     />
   )
 }
