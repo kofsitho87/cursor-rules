@@ -1,18 +1,12 @@
-# Cursor Rules 관리 프로젝트
+# Cursor Rules 모음집
 
-이 프로젝트는 Cursor-related rules를 효율적으로 관리하고 적용하기 위한 시스템입니다. 웹 애플리케이션을 통해 규칙을 손쉽게 생성, 수정, 조회 및 삭제할 수 있는 인터페이스를 제공하며, Python 기반의 백엔드를 통해 복잡한 규칙 처리 및 분석을 수행합니다.
-
-## 주요 기능
-
-*   **웹 기반 규칙 관리**: 사용자는 직관적인 웹 UI를 통해 규칙을 관리할 수 있습니다.
-*   **강력한 백엔드**: Python과 Langchain/Langgraph를 활용하여 유연하고 확장 가능한 규칙 엔진을 제공합니다.
-*   **다양한 규칙 지원**: 다양한 종류의 Cursor rules를 지원하며, 필요에 따라 새로운 규칙 유형을 쉽게 추가할 수 있습니다.
+이 프로젝트는 다양한 개발 환경과 기술 스택을 위한 Cursor Rules 가이드라인을 제공합니다. 각 환경별로 최적화된 코딩 스타일, 프로젝트 구조, 라이브러리 활용 규칙 및 모범 사례를 담고 있어 개발 팀의 생산성과 코드 품질을 향상시킬 수 있습니다.
 
 ## 프로젝트 구조
 
-*   `frontend/`: React 또는 다른 최신 프레임워크 기반의 웹 애플리케이션
-*   `backend/`: 규칙 처리 로직 및 API를 담당하는 서버
-*   `python/`: Langchain 및 Langgraph를 활용한 핵심 규칙 엔진 및 AI 관련 모듈
+*   `frontend/`: Next.js 15 + TypeScript 프론트엔드 개발용 Cursor Rules
+*   `backend/`: 백엔드 개발용 Cursor Rules 가이드라인
+*   `python/`: Python 개발용 Cursor Rules (Langchain, Langgraph 등 AI 관련 포함)
 *   `README.md`: 프로젝트 개요 및 사용법
 
 ## Frontend
