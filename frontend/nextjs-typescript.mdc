@@ -863,7 +863,7 @@ const { formState: { errors } } = useForm()
 
 ## 추가 가이드라인
 - TypeScript strict 모드 사용
-- ESLint + Prettier 설정
+- Biome.js 설정 (린팅 및 포맷팅)
 - 코드 리뷰 시 타입 안정성 체크
 - 재사용 가능한 컴포넌트 작성
 - 성능 최적화 고려
