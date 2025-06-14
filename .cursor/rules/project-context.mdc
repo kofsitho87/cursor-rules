@@ -1,0 +1,179 @@
+# 프로젝트 컨텍스트 학습 가이드
+
+## 📁 프로젝트 구조 분석
+
+### 폴더 구조 패턴 인식
+
+**기본 구조 학습 요소:**
+```
+src/
+├── components/     # 재사용 가능한 UI 컴포넌트
+├── pages/         # 페이지 컴포넌트
+├── hooks/         # 커스텀 React 훅
+├── utils/         # 유틸리티 함수
+├── types/         # TypeScript 타입 정의
+├── api/           # API 관련 코드
+├── styles/        # 스타일 파일
+└── constants/     # 상수 정의
+```
+
+**학습 포인트:**
+- 각 폴더의 역할과 책임
+- 파일 네이밍 컨벤션
+- 모듈 간 의존성 패턴
+- 절대/상대 경로 사용 규칙
+
+### 파일 네이밍 컨벤션
+
+**컴포넌트 파일:**
+- PascalCase: `UserProfile.tsx`, `NavigationBar.tsx`
+- 인덱스 파일: `index.ts` (barrel exports)
+- 스토리북: `Button.stories.tsx`
+- 테스트: `Button.test.tsx` 또는 `Button.spec.tsx`
+
+**유틸리티 파일:**
+- camelCase: `formatDate.ts`, `apiHelpers.ts`
+- 상수: `API_ENDPOINTS.ts`, `ROUTES.ts`
+- 타입: `userTypes.ts`, `apiTypes.ts`
+
+### Import/Export 패턴
+
+**절대 경로 사용:**
+```typescript
+// 권장
+import { Button } from '@/components/ui/Button';
+import { formatDate } from '@/utils/dateHelpers';
+
+// 지양
+import { Button } from '../../../components/ui/Button';
+```
+
+**Barrel Exports:**
+```typescript
+// components/index.ts
+export { Button } from './Button';
+export { Modal } from './Modal';
+export { Input } from './Input';
+
+// 사용
+import { Button, Modal, Input } from '@/components';
+```
+
+## 🛠 기술 스택 컨텍스트
+
+### 프레임워크와 라이브러리
+
+**React 생태계:**
+- React 버전과 주요 훅 사용 패턴
+- State 관리: Redux Toolkit, Zustand, Jotai 등
+- 라우팅: React Router, Next.js Router 등
+- 스타일링: Styled Components, Tailwind CSS, CSS Modules 등
+
+**빌드 도구:**
+- Vite, Webpack, Parcel 등의 설정 패턴
+- TypeScript 설정과 strict 모드 사용
+- ESLint, Prettier 규칙
+- 테스트 도구: Jest, Vitest, Testing Library 등
+
+### 설정 파일 분석
+
+**package.json 스크립트:**
+```json
+{
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "test": "vitest",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+  }
+}
+```
+
+**tsconfig.json 패턴:**
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
+}
+```
+
+## 🔗 의존성 관리 패턴
+
+### 라이브러리 사용 철학
+
+**최소 의존성 원칙:**
+- 기능별로 필요한 최소한의 라이브러리만 사용
+- Bundle 크기를 고려한 라이브러리 선택
+- Tree-shaking을 지원하는 라이브러리 우선 선택
+
+**호환성 고려사항:**
+- 라이브러리 간 버전 호환성
+- 장기 지원(LTS) 버전 선호
+- 커뮤니티 활성도와 메인테넌스 상태
+
+### 환경별 설정
+
+**개발 환경:**
+```typescript
+// .env.development
+VITE_API_URL=http://localhost:3001
+VITE_DEBUG_MODE=true
+VITE_LOG_LEVEL=debug
+```
+
+**프로덕션 환경:**
+```typescript
+// .env.production
+VITE_API_URL=https://api.production.com
+VITE_DEBUG_MODE=false
+VITE_LOG_LEVEL=error
+```
+
+## 📊 프로젝트 메트릭 추적
+
+### 성능 지표
+- Bundle 크기 모니터링
+- 로딩 시간 측정
+- Core Web Vitals 추적
+- 메모리 사용량 모니터링
+
+### 코드 품질 지표
+- TypeScript strict 모드 커버리지
+- 테스트 커버리지 비율
+- ESLint 규칙 준수율
+- 코드 중복도 측정
+
+## 🔄 컨텍스트 업데이트 전략
+
+### 주기적 검토
+- 월간: 의존성 업데이트 검토
+- 분기별: 아키텍처 패턴 개선사항 검토
+- 반기별: 기술 스택 로드맵 재평가
+
+### 변화 감지
+- 새로운 라이브러리 도입 시 자동 학습
+- 설정 파일 변경 감지와 반영
+- 팀 컨벤션 변경사항 추적
+
+---
+
+🎯 **목표**: 프로젝트의 고유한 특성과 팀의 개발 철학을 정확히 이해하여 일관성 있는 코드 생성을 지원합니다.

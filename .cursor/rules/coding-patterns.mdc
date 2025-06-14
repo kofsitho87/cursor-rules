@@ -1,0 +1,356 @@
+# 코딩 패턴 및 아키텍처 가이드
+
+## 🎨 코딩 스타일 패턴
+
+### 네이밍 컨벤션
+
+**변수와 함수:**
+```typescript
+// camelCase 사용
+const userName = 'john_doe';
+const fetchUserData = async () => {};
+const isLoggedIn = true;
+const userAccountBalance = 1000;
+
+// Boolean 변수는 is/has/can 등의 접두사 사용
+const isLoading = false;
+const hasPermission = true;
+const canEdit = false;
+```
+
+**상수:**
+```typescript
+// SCREAMING_SNAKE_CASE 사용
+const API_BASE_URL = 'https://api.example.com';
+const MAX_RETRY_ATTEMPTS = 3;
+const DEFAULT_TIMEOUT = 5000;
+
+// Enum
+enum UserRole {
+  ADMIN = 'admin',
+  USER = 'user',
+  MODERATOR = 'moderator'
+}
+```
+
+**타입과 인터페이스:**
+```typescript
+// PascalCase 사용
+interface UserProfile {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+}
+
+type ApiResponse<T> = {
+  data: T;
+  status: number;
+  message: string;
+};
+```
+
+### 함수 설계 패턴
+
+**순수 함수 우선:**
+```typescript
+// 권장: 순수 함수
+const calculateTax = (amount: number, rate: number): number => {
+  return amount * rate;
+};
+
+// 부수 효과가 있는 함수는 명확히 표시
+const saveUserData = async (userData: UserProfile): Promise<void> => {
+  // 부수 효과: API 호출, 데이터베이스 저장 등
+  await api.post('/users', userData);
+};
+```
+
+**함수 크기와 책임:**
+```typescript
+// 단일 책임 원칙 적용
+const validateEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+const formatUserName = (firstName: string, lastName: string): string => {
+  return `${firstName} ${lastName}`.trim();
+};
+
+// 복합 함수는 작은 함수들의 조합으로
+const processUserRegistration = async (userData: RawUserData) => {
+  const isValid = validateEmail(userData.email);
+  if (!isValid) throw new Error('Invalid email');
+  
+  const formattedName = formatUserName(userData.firstName, userData.lastName);
+  const processedData = { ...userData, fullName: formattedName };
+  
+  return await saveUserData(processedData);
+};
+```
+
+## 🏗 아키텍처 패턴
+
+### 컴포넌트 설계 철학
+
+**Composition over Inheritance:**
+```typescript
+// 기본 컴포넌트
+const Button = ({ children, variant = 'primary', ...props }) => {
+  return (
+    <button className={`btn btn-${variant}`} {...props}>
+      {children}
+    </button>
+  );
+};
+
+// 조합을 통한 확장
+const SubmitButton = ({ isLoading, children, ...props }) => {
+  return (
+    <Button variant="primary" disabled={isLoading} {...props}>
+      {isLoading ? 'Loading...' : children}
+    </Button>
+  );
+};
+```
+
+**Container/Presenter 패턴:**
+```typescript
+// Presenter (UI 로직만)
+const UserListPresenter = ({ users, onUserSelect, isLoading }) => {
+  if (isLoading) return <LoadingSpinner />;
+  
+  return (
+    <div className="user-list">
+      {users.map(user => (
+        <UserCard 
+          key={user.id} 
+          user={user} 
+          onClick={() => onUserSelect(user)}
+        />
+      ))}
+    </div>
+  );
+};
+
+// Container (비즈니스 로직)
+const UserListContainer = () => {
+  const { users, isLoading } = useUsers();
+  const navigate = useNavigate();
+  
+  const handleUserSelect = (user: User) => {
+    navigate(`/users/${user.id}`);
+  };
+  
+  return (
+    <UserListPresenter 
+      users={users}
+      isLoading={isLoading}
+      onUserSelect={handleUserSelect}
+    />
+  );
+};
+```
+
+### 상태 관리 패턴
+
+**지역 상태 vs 전역 상태:**
+```typescript
+// 지역 상태: 컴포넌트 내부에서만 사용
+const LoginForm = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // 로컬 상태 로직...
+};
+
+// 전역 상태: 여러 컴포넌트에서 공유
+const useAuthStore = create((set) => ({
+  user: null,
+  isAuthenticated: false,
+  login: async (credentials) => {
+    // 로그인 로직...
+    set({ user: userData, isAuthenticated: true });
+  },
+  logout: () => set({ user: null, isAuthenticated: false })
+}));
+```
+
+**상태 정규화:**
+```typescript
+// 권장: 정규화된 상태 구조
+interface AppState {
+  users: {
+    byId: Record<string, User>;
+    allIds: string[];
+  };
+  posts: {
+    byId: Record<string, Post>;
+    allIds: string[];
+  };
+  ui: {
+    isLoading: boolean;
+    currentUserId: string | null;
+  };
+}
+
+// 지양: 중첩된 구조
+interface BadState {
+  users: Array<{
+    id: string;
+    posts: Array<{
+      id: string;
+      comments: Comment[];
+    }>;
+  }>;
+}
+```
+
+## 🔄 비동기 처리 패턴
+
+### Error Handling
+
+**명시적 에러 처리:**
+```typescript
+// Result 패턴 활용
+type Result<T, E = Error> = 
+  | { success: true; data: T }
+  | { success: false; error: E };
+
+const fetchUser = async (id: string): Promise<Result<User>> => {
+  try {
+    const response = await api.get(`/users/${id}`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    return { success: false, error: error as Error };
+  }
+};
+
+// 사용
+const handleUserFetch = async (id: string) => {
+  const result = await fetchUser(id);
+  
+  if (result.success) {
+    setUser(result.data);
+  } else {
+    setError(result.error.message);
+  }
+};
+```
+
+**React Query/SWR 패턴:**
+```typescript
+const useUser = (userId: string) => {
+  return useQuery({
+    queryKey: ['user', userId],
+    queryFn: () => fetchUser(userId),
+    staleTime: 5 * 60 * 1000, // 5분
+    cacheTime: 10 * 60 * 1000, // 10분
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30000)
+  });
+};
+```
+
+## 🧪 테스트 패턴
+
+### 테스트 구조화
+
+**AAA 패턴 (Arrange, Act, Assert):**
+```typescript
+describe('calculateTax', () => {
+  it('should calculate tax correctly for positive amounts', () => {
+    // Arrange
+    const amount = 100;
+    const rate = 0.1;
+    const expected = 10;
+    
+    // Act
+    const result = calculateTax(amount, rate);
+    
+    // Assert
+    expect(result).toBe(expected);
+  });
+});
+```
+
+**React 컴포넌트 테스트:**
+```typescript
+describe('UserCard', () => {
+  it('should display user information correctly', () => {
+    // Arrange
+    const user = {
+      id: '1',
+      name: 'John Doe',
+      email: 'john@example.com'
+    };
+    
+    // Act
+    render(<UserCard user={user} />);
+    
+    // Assert
+    expect(screen.getByText('John Doe')).toBeInTheDocument();
+    expect(screen.getByText('john@example.com')).toBeInTheDocument();
+  });
+});
+```
+
+## 📝 문서화 패턴
+
+### JSDoc 활용
+
+```typescript
+/**
+ * 사용자 데이터를 검증하고 정규화합니다.
+ * 
+ * @param rawData - 원시 사용자 데이터
+ * @param options - 검증 옵션
+ * @returns 정규화된 사용자 데이터
+ * 
+ * @example
+ * ```typescript
+ * const user = validateAndNormalizeUser({
+ *   name: '  John Doe  ',
+ *   email: 'JOHN@EXAMPLE.COM'
+ * });
+ * ```
+ */
+const validateAndNormalizeUser = (
+  rawData: RawUserData,
+  options: ValidationOptions = {}
+): NormalizedUser => {
+  // 구현...
+};
+```
+
+### README 패턴
+
+```markdown
+# 프로젝트명
+
+## 시작하기
+
+### 사전 요구사항
+- Node.js 18+
+- npm 또는 yarn
+
+### 설치
+```bash
+npm install
+npm run dev
+```
+
+### 프로젝트 구조
+```
+src/
+├── components/    # 재사용 가능한 컴포넌트
+├── pages/        # 페이지 컴포넌트
+└── utils/        # 유틸리티 함수
+```
+```
+
+---
+
+🎯 **목표**: 일관되고 유지보수 가능한 코드베이스를 구축하여 팀 전체의 개발 효율성을 극대화합니다.
