@@ -1,0 +1,297 @@
+# LangGraph Agent Development Guide
+
+## 핵심 개념
+
+### LangGraph 개요
+LangGraph는 상태 기반 그래프 구조를 사용하여 복잡한 AI 에이전트 워크플로우를 구축하는 프레임워크입니다.
+
+### 기본 구성 요소
+
+#### 1. State (상태)
+```python
+from typing_extensions import TypedDict
+from typing import Annotated
+from langgraph.graph.message import add_messages
+
+class State(TypedDict):
+    messages: Annotated[list, add_messages]
+    user_data: dict
+    step_count: int
+```
+
+#### 2. Nodes (노드)
+```python
+def agent_node(state: State) -> State:
+    """에이전트 로직을 실행하는 노드"""
+    response = llm.invoke(state["messages"])
+    return {"messages": [response]}
+```
+
+#### 3. Edges (엣지)
+```python
+def should_continue(state: State) -> str:
+    """조건부 엣지 함수"""
+    last_message = state["messages"][-1]
+    if last_message.tool_calls:
+        return "tools"
+    return "__end__"
+```
+
+## Agent 아키텍처 패턴
+
+### 1. ReAct Agent (Reason + Act)
+```python
+from langgraph.prebuilt import create_react_agent
+
+# 도구 정의
+tools = [search_tool, calculator_tool]
+
+# ReAct 에이전트 생성
+agent = create_react_agent(
+    model=llm,
+    tools=tools,
+    checkpointer=checkpointer
+)
+```
+
+### 2. Custom Agent 구조
+```python
+from langgraph.graph import StateGraph, START, END
+
+# 그래프 빌더 생성
+builder = StateGraph(State)
+
+# 노드 추가
+builder.add_node("agent", agent_node)
+builder.add_node("tools", tool_node)
+
+# 엣지 추가
+builder.add_edge(START, "agent")
+builder.add_conditional_edges("agent", should_continue)
+builder.add_edge("tools", "agent")
+
+# 컴파일
+graph = builder.compile(checkpointer=checkpointer)
+```
+
+## 메모리 관리
+
+### 1. Short-term Memory (Thread-scoped)
+```python
+# 체크포인터를 통한 상태 지속성
+from langgraph.checkpoint.sqlite import SqliteSaver
+
+checkpointer = SqliteSaver.from_conn_string("checkpoints.db")
+graph = builder.compile(checkpointer=checkpointer)
+
+# 사용 예
+config = {"configurable": {"thread_id": "conversation-1"}}
+result = graph.invoke({"messages": [user_message]}, config)
+```
+
+### 2. Long-term Memory (Cross-thread)
+```python
+from langgraph.store.memory import InMemoryStore
+
+# 메모리 스토어 설정
+store = InMemoryStore()
+
+# 메모리 저장
+namespace = ("user_123", "preferences")
+store.put(namespace, "dietary", {"vegetarian": True})
+
+# 메모리 검색
+memories = store.search(namespace, query="diet preferences")
+```
+
+## 도구 통합
+
+### 도구 정의
+```python
+from langchain_core.tools import tool
+
+@tool
+def search_web(query: str) -> str:
+    """웹 검색 도구"""
+    # 실제 검색 로직
+    return search_results
+
+@tool
+def calculate(expression: str) -> float:
+    """계산 도구"""
+    return eval(expression)  # 실제로는 안전한 계산기 사용
+```
+
+### 도구 바인딩
+```python
+tools = [search_web, calculate]
+model_with_tools = model.bind_tools(tools)
+```
+
+## Human-in-the-Loop
+
+### 인터럽트 설정
+```python
+# 특정 노드 전에 인터럽트
+graph = builder.compile(
+    checkpointer=checkpointer,
+    interrupt_before=["human_approval"]
+)
+
+# 사용
+result = graph.invoke(input_data, config)
+# 인터럽트 후 상태 확인
+state = graph.get_state(config)
+# 승인 후 재개
+graph.invoke(None, config)
+```
+
+## 멀티 에이전트 시스템
+
+### 서브그래프 활용
+```python
+# 개별 에이전트 그래프
+researcher_graph = create_researcher_agent()
+writer_graph = create_writer_agent()
+
+# 메인 그래프에 통합
+main_builder = StateGraph(State)
+main_builder.add_node("researcher", researcher_graph)
+main_builder.add_node("writer", writer_graph)
+```
+
+## 베스트 프랙티스
+
+### 1. 상태 설계
+- 상태를 간결하게 유지
+- 타입 힌트 사용
+- 불필요한 데이터 저장 방지
+
+### 2. 에러 처리
+```python
+def safe_node(state: State) -> State:
+    try:
+        # 노드 로직
+        return process_state(state)
+    except Exception as e:
+        return {"error": str(e), "step": "failed"}
+```
+
+### 3. 메모리 최적화
+```python
+# 메시지 기록 관리
+from langchain_core.messages import trim_messages
+
+def manage_memory(state: State) -> State:
+    # 메시지 기록을 적절한 크기로 유지
+    trimmed_messages = trim_messages(
+        state["messages"],
+        max_tokens=1000,
+        strategy="last"
+    )
+    return {"messages": trimmed_messages}
+```
+
+## 실제 구현 패턴
+
+### 1. 채팅봇 에이전트
+```python
+class ChatbotState(TypedDict):
+    messages: Annotated[list, add_messages]
+    user_id: str
+    session_data: dict
+
+def create_chatbot():
+    builder = StateGraph(ChatbotState)
+    builder.add_node("chat", chat_node)
+    builder.add_node("memory_update", update_memory)
+    
+    builder.add_edge(START, "chat")
+    builder.add_edge("chat", "memory_update")
+    builder.add_edge("memory_update", END)
+    
+    return builder.compile(checkpointer=checkpointer)
+```
+
+### 2. 문서 처리 에이전트
+```python
+class DocumentState(TypedDict):
+    document: str
+    chunks: list
+    summaries: list
+    final_output: str
+
+def create_document_processor():
+    builder = StateGraph(DocumentState)
+    builder.add_node("chunk", chunk_document)
+    builder.add_node("summarize", summarize_chunks)
+    builder.add_node("combine", combine_summaries)
+    
+    # 순차 처리 파이프라인
+    builder.add_edge(START, "chunk")
+    builder.add_edge("chunk", "summarize")
+    builder.add_edge("summarize", "combine")
+    builder.add_edge("combine", END)
+    
+    return builder.compile()
+```
+
+## 프로덕션 배포
+
+### 체크포인터 선택
+```python
+# 개발용 (인메모리)
+from langgraph.checkpoint.memory import MemorySaver
+checkpointer = MemorySaver()
+
+# 프로덕션용 (PostgreSQL)
+from langgraph.checkpoint.postgres import PostgresSaver
+checkpointer = PostgresSaver.from_conn_string("postgresql://...")
+```
+
+### 스트리밍 응답
+```python
+def stream_responses(graph, input_data, config):
+    for chunk in graph.stream(input_data, config, stream_mode="values"):
+        yield chunk["messages"][-1].content
+```
+
+### 모니터링
+```python
+# LangSmith 트레이싱
+import os
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+os.environ["LANGCHAIN_API_KEY"] = "your-api-key"
+```
+
+## 일반적인 문제 해결
+
+### 1. 메모리 누수 방지
+- 체크포인터 정리 작업 스케줄링
+- 오래된 스레드 자동 삭제
+- 상태 크기 모니터링
+
+### 2. 성능 최적화
+- 병렬 처리 활용 (Send API)
+- 불필요한 체크포인트 최소화
+- 효율적인 상태 업데이트
+
+### 3. 디버깅
+```python
+# 그래프 시각화
+graph.get_graph().draw_mermaid_png()
+
+# 상태 히스토리 확인
+history = list(graph.get_state_history(config))
+```
+
+## 권장 패키지
+```
+langgraph >= 0.2.0
+langchain-core >= 0.3.0
+langchain-openai >= 0.2.0
+langgraph-checkpoint-sqlite >= 1.0.0  # 개발용
+langgraph-checkpoint-postgres >= 1.0.0  # 프로덕션용
+```
+
+이 가이드를 따라 LangGraph를 사용하여 강력하고 확장 가능한 AI 에이전트를 구축하세요.
